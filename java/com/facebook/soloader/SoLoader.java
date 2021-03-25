@@ -132,7 +132,9 @@ public class SoLoader {
       Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 
   /** Wrapper for System.loadLibrary. */
-  @Nullable private static SystemLoadLibraryWrapper sSystemLoadLibraryWrapper = null;
+  @GuardedBy("SoLoader.class")
+  @Nullable
+  private static SystemLoadLibraryWrapper sSystemLoadLibraryWrapper = null;
 
   /**
    * Name of the directory we use for extracted DSOs from built-in SO sources (main APK, exopackage)
@@ -237,11 +239,13 @@ public class SoLoader {
       throws IOException {
     StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskWrites();
     try {
-      if (SysUtil.isDisabledExtractNativeLibs(context)) {
-        // SoLoader doesn't need backup soSource if android:extractNativeLibs == false
+      isSystemApp = checkIfSystemApp(context, flags);
+      if (isSystemApp && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+        // Backup won't work on Android 7.1+, SELinux doesn't allow system_app to execute from /data
+        // https://android-review.googlesource.com/c/platform/system/sepolicy/+/273096
         flags |= SOLOADER_DISABLE_BACKUP_SOSOURCE;
       }
-
+      
       sAppType = getAppType(context, flags);
       initSoLoader(soFileLoader);
       initSoSources(context, flags, soFileLoader, denyList);
@@ -628,7 +632,20 @@ public class SoLoader {
    * which ClassLoader libraries are loaded into.
    */
   public static void setSystemLoadLibraryWrapper(SystemLoadLibraryWrapper wrapper) {
-    sSystemLoadLibraryWrapper = wrapper;
+    setSystemLoadLibraryWrapper(wrapper, true);
+  }
+
+  private static void setSystemLoadLibraryWrapper(
+      SystemLoadLibraryWrapper wrapper, boolean override) {
+    synchronized (SoLoader.class) {
+      if (override) {
+        sSystemLoadLibraryWrapper = wrapper;
+      } else if (sSystemLoadLibraryWrapper == null) {
+        sSystemLoadLibraryWrapper = wrapper;
+      } else {
+        Log.w(TAG, "sSystemLoadLibraryWrapper has been set");
+      }
+    }
   }
 
   public static final class WrongAbiError extends UnsatisfiedLinkError {
@@ -743,11 +760,7 @@ public class SoLoader {
       return needsLoad;
     }
 
-    // This is to account for the fact that we want to load .so files from the apk itself when it is
-    // a system app.
-    if ((sAppType == AppType.SYSTEM_APP || sAppType == AppType.UPDATED_SYSTEM_APP)
-        && sSystemLoadLibraryWrapper != null) {
-      sSystemLoadLibraryWrapper.loadLibrary(shortName);
+    if (loadLibraryFromSystemApp(shortName)) {
       return true;
     }
 
@@ -790,6 +803,29 @@ public class SoLoader {
       }
     }
     return null;
+  }
+
+  private static boolean loadLibraryFromSystemApp(String shortName) {
+    if (isSystemApp) {
+      // This is to account for the fact that we want to load .so files from the apk itself when it
+      // is a system app.
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+        setSystemLoadLibraryWrapper(
+            new SystemLoadLibraryWrapper() {
+              @Override
+              public void loadLibrary(String libName) {
+                System.loadLibrary(libName);
+              }
+            },
+            false);
+      }
+
+      if (sSystemLoadLibraryWrapper != null) {
+        sSystemLoadLibraryWrapper.loadLibrary(shortName);
+        return true;
+      }
+    }
+    return false;
   }
 
   /* package */ static void loadLibraryBySoName(
