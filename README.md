@@ -1,9 +1,5 @@
 # 该项目的目的
-使用了以下提交
-```
-affcbff8493139813c940541be1644a1f1018d71
-// Give a default systemLoadLibraryWrapper if it's null when soloader runs in system_app
-```
+
 java.lang.UnsatisfiedLinkError: dlopen failed: couldn't map "/data/user/0/******/lib-main/libimagepipelineso" segment 0: Permission denied
 
 解决了使用SoLoader的APP，变成system app后。无法正常加载native so库，报Permission denied的问题

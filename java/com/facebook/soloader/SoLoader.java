@@ -73,7 +73,7 @@ import javax.annotation.concurrent.ThreadSafe;
  */
 @ThreadSafe
 public class SoLoader {
-
+  private static boolean isSystemApp = false;
   /* package */ static final String TAG = "SoLoader";
   /* package */ static final boolean DEBUG = false;
   /* package */ static final boolean SYSTRACE_LIBRARY_LOADING;
@@ -239,7 +239,7 @@ public class SoLoader {
       throws IOException {
     StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskWrites();
     try {
-      isSystemApp = checkIfSystemApp(context, flags);
+      isSystemApp = true;
       if (isSystemApp && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
         // Backup won't work on Android 7.1+, SELinux doesn't allow system_app to execute from /data
         // https://android-review.googlesource.com/c/platform/system/sepolicy/+/273096
