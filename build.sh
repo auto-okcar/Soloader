@@ -4,3 +4,6 @@ export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk1.8.0_231.jdk/Contents/Ho
 
 #cp -R  ./buck-out/gen/java/com/facebook/soloader/nativeloader/lib__nativeloader__output/nativeloader.jar /Users/leo/Car/source/Okcar/android/connecter_ui/android/app/libs/soloader/nativeloader.jar
 #cp -R ./buck-out/gen/soloader.aar /Users/leo/Car/source/Okcar/android/connecter_ui/android/app/libs/soloader/soloader.aar
+
+cp -R  ./buck-out/gen/java/com/facebook/soloader/nativeloader/lib__nativeloader__output/nativeloader.jar /Users/leo/Car/source/Okcar/android/OkLauncher/nativeloader/
+cp -R ./buck-out/gen/soloader.aar /Users/leo/Car/source/Okcar/android/OkLauncher/soloader/
